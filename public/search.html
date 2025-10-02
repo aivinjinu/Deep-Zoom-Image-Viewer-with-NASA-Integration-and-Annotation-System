@@ -14,12 +14,22 @@
 
         <div class="nasa-search">
             <form id="nasaSearchForm">
-                <input type="text" id="nasaSearchInput" placeholder="e.g., HiRISE Mars" required>
+                <input type="text" id="nasaSearchInput" placeholder="e.g., Hubble Andromeda" required>
                 <button type="submit">Search</button>
             </form>
             <div id="nasaResults" class="nasa-results"></div>
         </div>
-    </div>
+
+        <div class="direct-download">
+            <p style="font-weight: bold; margin-top: 25px;">OR</p>
+            <h4>Process Image Directly from URL</h4>
+            <p>Paste a link to a high-resolution image file (.tif, .jpg, etc.)</p>
+            <form id="directDownloadForm">
+                <input type="url" id="imageUrlInput" placeholder="https://.../image.tif" required>
+                <button type="submit">Process URL</button>
+            </form>
+        </div>
+        </div>
     <script src="js/search.js"></script>
 </body>
 </html>

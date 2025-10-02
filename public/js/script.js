@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sidebar = document.getElementById('sidebar');
     const sidebarToggle = document.getElementById('sidebarToggle');
     const imageSelector = document.getElementById('imageSelector');
+    const deleteImageBtn = document.getElementById('deleteImageBtn'); // New reference
     const addPinBtn = document.getElementById('addPinBtn');
     const pinsList = document.getElementById('pinsList');
     
@@ -39,7 +40,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 imageSelector.appendChild(option);
             });
             
-            // Check if an image was selected from the search page via URL parameter
             const urlParams = new URLSearchParams(window.location.search);
             const imageIdFromUrl = urlParams.get('image_id');
             
@@ -47,10 +47,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 imageSelector.value = imageIdFromUrl;
             }
             
-            // Load the image that is currently selected in the dropdown
             const selectedOption = imageSelector.options[imageSelector.selectedIndex];
+            // UPDATED: Handle case where no images are left
             if (selectedOption) {
                 switchImage(selectedOption.value, selectedOption.dataset.path);
+            } else {
+                // If the library is empty, clear the viewer.
+                currentImageId = null;
+                viewer.close();
+                loadAnnotations(null);
             }
 
         } catch (error) { console.error('Failed to load image library:', error); }
@@ -58,6 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Opens a new image in the viewer and loads its annotations
     function switchImage(id, path) {
+        if (currentImageId === id) return; // Don't reload the same image
         currentImageId = id;
         viewer.open(path);
         loadAnnotations(id);
@@ -69,22 +75,19 @@ document.addEventListener('DOMContentLoaded', () => {
         pinsList.innerHTML = '';
         viewer.clearOverlays();
         pins = [];
+        pinCounter = 0;
 
-        if (!imageId) return; // Don't try to load annotations for nothing
+        if (!imageId) return;
 
         try {
             const response = await fetch(`/api/images/${imageId}/annotations`);
-            if (!response.ok) { // The backend might 404 if no annotations file exists
-                console.warn(`No annotations found for image ${imageId}`);
-                return;
-            }
+            if (!response.ok) { return; }
             pins = await response.json();
             pinCounter = pins.length;
             pins.forEach(renderPin);
         } catch (error) { console.error('Failed to load annotations:', error); }
     }
     
-    // Renders a single pin on the viewer and in the sidebar list
     function renderPin(pin) {
         const pinElement = document.createElement('div');
         pinElement.id = pin.id;
@@ -102,7 +105,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Saves a new pin to the backend
     async function savePin(imageId, pin) {
         try {
             const response = await fetch(`/api/images/${imageId}/annotations`, {
@@ -112,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const savedPin = await response.json();
             pins.push(savedPin);
-            renderPin(savedPin); // Render the pin immediately after saving
+            renderPin(savedPin);
         } catch (error) { console.error('Failed to save pin:', error); }
     }
 
@@ -130,6 +132,41 @@ document.addEventListener('DOMContentLoaded', () => {
         switchImage(selectedOption.value, selectedOption.dataset.path);
     });
 
+    // NEW: Event listener for the delete button
+    deleteImageBtn.addEventListener('click', async () => {
+        const selectedOption = imageSelector.options[imageSelector.selectedIndex];
+        if (!selectedOption) {
+            alert('No image selected to delete.');
+            return;
+        }
+
+        const imageId = selectedOption.value;
+        const imageName = selectedOption.textContent;
+
+        if (!confirm(`Are you sure you want to permanently delete "${imageName}"?\nThis action cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/images/${imageId}`, {
+                method: 'DELETE',
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || 'Failed to delete the image from the server.');
+            }
+            
+            // Reload the library to reflect the change. This will remove the item
+            // from the dropdown and load the next available image.
+            await loadLibrary();
+
+        } catch (error) {
+            console.error('Deletion failed:', error);
+            alert(`Could not delete the image: ${error.message}`);
+        }
+    });
+
     addPinBtn.addEventListener('click', () => {
         isPinningMode = !isPinningMode;
         if (isPinningMode) {
@@ -144,7 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const viewportPoint = viewer.viewport.pointFromPixel(event.position);
         pinCounter++;
         const newPin = {
-            id: `pin-${Date.now()}`, // Use a more unique ID
+            id: `pin-${Date.now()}`,
             text: `Annotation #${pinCounter}`,
             point: { x: viewportPoint.x, y: viewportPoint.y }
         };

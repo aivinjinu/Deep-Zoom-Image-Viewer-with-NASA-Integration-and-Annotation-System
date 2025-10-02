@@ -1,24 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Large Image Viewer</title>
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
   <div class="viewer-container">
-    
+
     <aside id="sidebar" class="sidebar">
       <div class="sidebar-content">
-        
+
         <div class="image-library">
           <a href="/search" class="search-button">Search for New Images</a>
           <h4>My Image Library</h4>
-          <select id="imageSelector"></select>
+
+          <div class="image-selector-container">
+            <select id="imageSelector"></select>
+            <button id="deleteImageBtn" title="Delete Selected Image">🗑️</button>
+          </div>
+
         </div>
-        
+
         <div class="annotations-panel">
           <h4>Annotations</h4>
           <button id="addPinBtn">📍 Add Pin</button>
@@ -32,10 +39,11 @@
       <button id="sidebarToggle" class="sidebar-toggle">☰</button>
       <div id="openseadragon-viewer"></div>
     </main>
-    
+
   </div>
 
   <script src="js/openseadragon.min.js"></script>
   <script src="js/script.js"></script>
 </body>
+
 </html>

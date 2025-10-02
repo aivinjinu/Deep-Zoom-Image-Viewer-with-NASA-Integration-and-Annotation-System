@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search NASA Images</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="search-page">
+    <div class="search-container">
+        <h1>Search NASA's Image Archive</h1>
+        <p>Find high-resolution scientific images of planets, nebulae, and more.</p>
+        <a href="/" class="home-link">&larr; Back to Viewer</a>
+
+        <div class="nasa-search">
+            <form id="nasaSearchForm">
+                <input type="text" id="nasaSearchInput" placeholder="e.g., HiRISE Mars" required>
+                <button type="submit">Search</button>
+            </form>
+            <div id="nasaResults" class="nasa-results"></div>
+        </div>
+    </div>
+    <script src="js/search.js"></script>
+</body>
+</html>

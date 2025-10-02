@@ -1,0 +1,62 @@
+:root {
+  --sidebar-width: 320px;
+  --bg-color: #1a1a1d;
+  --panel-color: #2c2c34;
+  --text-color: #e1e1e1;
+  --primary-color: #007bff;
+}
+body { margin: 0; font-family: sans-serif; background-color: var(--bg-color); color: var(--text-color); overflow: hidden; }
+
+/* Styles for the separate Search Page */
+.search-page { background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; color: #333; }
+.search-container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 700px; text-align: center; }
+.home-link { display: inline-block; margin-bottom: 20px; color: var(--primary-color); text-decoration: none; }
+.nasa-search { margin-top: 20px; }
+#nasaSearchForm { display: flex; }
+#nasaSearchInput { flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px 0 0 4px; }
+#nasaSearchForm button { padding: 8px 12px; border: 1px solid var(--primary-color); background-color: var(--primary-color); color: white; cursor: pointer; border-radius: 0 4px 4px 0; }
+.nasa-results { margin-top: 15px; max-height: 400px; overflow-y: auto; text-align: left; }
+.nasa-item { display: flex; align-items: center; padding: 8px; cursor: pointer; border-radius: 4px; transition: background-color 0.2s; }
+.nasa-item:hover { background-color: #eee; }
+.nasa-item img { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; margin-right: 10px; }
+
+
+/* Main Viewer Page Styles */
+.viewer-container { display: flex; width: 100vw; height: 100vh; }
+.sidebar { width: var(--sidebar-width); background-color: var(--panel-color); flex-shrink: 0; transition: margin-left 0.3s ease-in-out; display: flex; flex-direction: column; }
+.sidebar.collapsed { margin-left: calc(-1 * var(--sidebar-width)); }
+.sidebar-content { padding: 15px; overflow-y: auto; }
+.search-button { display: block; width: 100%; box-sizing: border-box; padding: 10px; background-color: #28a745; color: white; text-align: center; text-decoration: none; border-radius: 5px; margin-bottom: 20px; }
+#imageSelector { width: 100%; padding: 8px; background-color: #3a3a44; color: var(--text-color); border: 1px solid #555; border-radius: 4px; }
+.image-library h4, .annotations-panel h4 { margin-top: 15px; margin-bottom: 10px; }
+#addPinBtn { width: 100%; padding: 10px; background-color: var(--primary-color); border: none; color: white; border-radius: 5px; cursor: pointer; font-size: 16px; margin-top: 15px; }
+.pins-list { list-style: none; padding: 0; margin-top: 15px; }
+.pins-list li { background-color: #3a3a44; padding: 10px; margin-bottom: 8px; border-radius: 4px; cursor: pointer; }
+.viewport {
+  flex-grow: 1;
+  position: relative; /* This makes it the positioning parent for the toggle button */
+}
+#openseadragon-viewer {
+  width: 100%;
+  height: 100%;
+  /* --- ADDED --- */
+  /* This creates a 60px space on the left for the sidebar button */
+  padding-left: 60px;
+  box-sizing: border-box; /* Ensures padding is included in the element's total width */
+}
+.sidebar-toggle {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  z-index: 1000;
+  background-color: var(--panel-color);
+  border: 1px solid #444;
+  color: var(--text-color);
+  width: 40px;
+  height: 40px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 20px;
+  transition: all 0.1s ease-in-out;
+}
+.pin-marker { width: 24px; height: 24px; background: #ff4757; border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%); }

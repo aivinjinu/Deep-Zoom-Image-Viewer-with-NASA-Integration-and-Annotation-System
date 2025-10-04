@@ -4,17 +4,19 @@
   --panel-color: #2c2c34;
   --text-color: #e1e1e1;
   --primary-color: #007bff;
+  --danger-color: #dc3545;
+  --success-color: #28a745;
+  --secondary-color: #6c757d;
 }
 body { margin: 0; font-family: sans-serif; background-color: var(--bg-color); color: var(--text-color); overflow: hidden; }
 
-/* Styles for the separate Search Page */
+/* Styles for the separate Search Page (no changes) */
 .search-page { background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; color: #333; }
 .search-container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 700px; text-align: center; }
 .home-link { display: inline-block; margin-bottom: 20px; color: var(--primary-color); text-decoration: none; }
-.nasa-search { margin-top: 20px; }
 #nasaSearchForm { display: flex; }
 #nasaSearchInput { flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px 0 0 4px; }
-#nasaSearchForm button { padding: 8px 12px; border: 1px solid var(--primary-color); background-color: var(--primary-color); color: white; cursor: pointer; border-radius: 0 4px 4px 0; }
+#nasaSearchForm button { padding: 8px 12px; border: none; background-color: var(--primary-color); color: white; cursor: pointer; border-radius: 0 4px 4px 0; }
 .nasa-results { margin-top: 15px; max-height: 400px; overflow-y: auto; text-align: left; }
 .nasa-item { display: flex; align-items: center; padding: 8px; cursor: pointer; border-radius: 4px; transition: background-color 0.2s; }
 .nasa-item:hover { background-color: #eee; }
@@ -26,75 +28,80 @@ body { margin: 0; font-family: sans-serif; background-color: var(--bg-color); co
 .sidebar { width: var(--sidebar-width); background-color: var(--panel-color); flex-shrink: 0; transition: margin-left 0.3s ease-in-out; display: flex; flex-direction: column; }
 .sidebar.collapsed { margin-left: calc(-1 * var(--sidebar-width)); }
 .sidebar-content { padding: 15px; overflow-y: auto; }
-.search-button { display: block; width: 100%; box-sizing: border-box; padding: 10px; background-color: #28a745; color: white; text-align: center; text-decoration: none; border-radius: 5px; margin-bottom: 20px; }
+.search-button { display: block; width: 100%; box-sizing: border-box; padding: 10px; background-color: var(--success-color); color: white; text-align: center; text-decoration: none; border-radius: 5px; margin-bottom: 20px; }
 
-/* --- UPDATED STYLES FOR VERTICAL LAYOUT --- */
-.image-selector-container {
-  display: flex;
-  flex-direction: column; /* This stacks the items vertically */
-  align-items: stretch;   /* This makes both items fill the width */
-  gap: 8px;
-}
-#imageSelector {
-  padding: 8px;
-  background-color: #3a3a44;
-  color: var(--text-color);
-  border: 1px solid #555;
-  border-radius: 4px;
-}
-#deleteImageBtn {
-  padding: 8px 10px;
-  background-color: #dc3545;
-  border: 1px solid #dc3545;
-  color: white;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 16px;
-  line-height: 1;
-  transition: background-color 0.2s;
-}
-#deleteImageBtn:hover {
-  background-color: #c82333;
-  border-color: #c82333;
-}
-/* --- END OF UPDATED STYLES --- */
+.image-selector-container { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+#imageSelector { padding: 8px; background-color: #3a3a44; color: var(--text-color); border: 1px solid #555; border-radius: 4px; }
+#deleteImageBtn { padding: 8px 10px; background-color: var(--danger-color); border: 1px solid var(--danger-color); color: white; border-radius: 4px; cursor: pointer; font-size: 14px; transition: background-color 0.2s; }
+#deleteImageBtn:hover { background-color: #c82333; }
 
-.image-library h4, .annotations-panel h4 { margin-top: 15px; margin-bottom: 10px; }
+.image-library h4, .annotations-panel h4, #compositionTools h4 { margin-top: 15px; margin-bottom: 10px; border-bottom: 1px solid #444; padding-bottom: 5px;}
+
+/* Composition Mode Styles */
+.hidden { display: none !important; }
+.utility-button { width: 100%; padding: 10px; margin-top: 20px; border: 1px solid var(--secondary-color); background: none; color: var(--text-color); cursor: pointer; border-radius: 4px; }
+#compositionWorkspace { margin-top: 10px; }
+
+/* --- NEW STYLES FOR COMPOSITION SETTINGS --- */
+.composition-settings {
+    background-color: #3a3a44;
+    padding: 10px 12px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    font-size: 0.9em;
+}
+.composition-settings label {
+    display: block;
+    margin-bottom: 5px;
+}
+.composition-settings input[type="range"] {
+    width: 100%;
+    margin-bottom: 10px;
+}
+.overlap-control {
+    display: flex;
+    align-items: center;
+}
+.overlap-control label {
+    margin: 0 0 0 8px;
+    user-select: none; /* Prevents text selection on click */
+}
+/* --- END OF NEW STYLES --- */
+
+#compositionImageList { max-height: 200px; overflow-y: auto; border: 1px solid #444; border-radius: 4px; padding: 5px; margin-bottom: 10px; }
+.composition-item { display: block; padding: 8px; cursor: pointer; border-radius: 3px; }
+.composition-item:hover { background-color: #3a3a44; }
+.composition-item input { margin-right: 10px; }
+.composition-actions { display: flex; gap: 10px; }
+.primary-action, .secondary-action { flex-grow: 1; padding: 10px; border: none; color: white; border-radius: 4px; cursor: pointer; }
+.primary-action { background-color: var(--primary-color); }
+.secondary-action { background-color: var(--secondary-color); }
+
+/* Interactive Tools Styles */
+#compositionTools { margin-top: 15px; }
+.image-tool-panel { margin-bottom: 10px; padding: 10px; background-color: #3a3a44; border-radius: 4px; }
+.image-tool-panel p { margin: 0 0 8px 0; font-size: 0.9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.image-tool-panel label { font-size: 0.8em; }
+.image-tool-panel input[type="range"] { width: 100%; }
 #addPinBtn { width: 100%; padding: 10px; background-color: var(--primary-color); border: none; color: white; border-radius: 5px; cursor: pointer; font-size: 16px; margin-top: 15px; }
 .pins-list { list-style: none; padding: 0; margin-top: 15px; }
-.pins-list li {
-  background-color: #3a3a44;
-  padding: 10px;
-  margin-bottom: 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.viewport {
-  flex-grow: 1;
-  position: relative; 
-}
-#openseadragon-viewer {
-  width: 100%;
-  height: 100%;
-  padding-left: 60px;
-  box-sizing: border-box; 
-}
-.sidebar-toggle {
-  position: absolute;
-  top: 15px;
-  left: 15px;
-  z-index: 1000;
-  background-color: var(--panel-color);
-  border: 1px solid #444;
-  color: var(--text-color);
-  width: 40px;
-  height: 40px;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 20px;
-  transition: all 0.1s ease-in-out;
-}
+.pins-list li { background-color: #3a3a44; padding: 10px; margin-bottom: 8px; border-radius: 4px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.viewport { flex-grow: 1; position: relative; }
+#openseadragon-viewer { width: 100%; height: 100%; padding-left: 60px; box-sizing: border-box; }
+.sidebar-toggle { position: absolute; top: 15px; left: 15px; z-index: 1000; background-color: var(--panel-color); border: 1px solid #444; color: var(--text-color); width: 40px; height: 40px; border-radius: 5px; cursor: pointer; font-size: 20px; transition: all 0.1s ease-in-out; }
 .pin-marker { width: 24px; height: 24px; background: #ff4757; border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%); }
+
+.error-message {
+    color: #ff4757;
+    margin-top: 10px;
+    font-size: 1em;
+    text-align: left;
+}
+#imageUrlInput {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px 0 0 4px;
+    margin-bottom: 8px;
+    box-sizing: border-box;
+}

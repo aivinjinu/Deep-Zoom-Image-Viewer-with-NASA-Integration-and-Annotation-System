@@ -97,23 +97,19 @@ app.get('/api/nasa/asset-info/:nasa_id', async (req, res) => {
 });
 
 app.post('/api/process-nasa-image', async (req, res) => {
-    // This endpoint remains unchanged and fully functional for the NASA search workflow
     const { nasa_id, title, imageUrl } = req.body;
     console.log(`\n--- New NASA Image Request ---`);
     console.log(`[INIT] Processing request for NASA ID: ${nasa_id} (Title: ${title})`);
     if (!nasa_id) { return res.status(400).send('NASA ID is required.'); }
-
     const imageId = crypto.createHash('md5').update(nasa_id).digest('hex');
     const imageFolderPath = path.join(gigaImagesPath, imageId);
     const dziPath = path.join(imageFolderPath, 'tiles.dzi');
     const relativeDziPath = `gigaimages/${imageId}/tiles.dzi`;
-
     try {
         await fs.access(dziPath);
         console.log(`[CACHE HIT] Image ${imageId} already processed. Serving from cache.`);
         return res.json({ id: imageId, path: relativeDziPath });
     } catch (e) { console.log(`[CACHE MISS] Image ${imageId} not found. Starting new processing workflow.`); }
-
     const tempImagePath = path.join(__dirname, 'data', `${imageId}_temp`);
     try {
         let finalImageUrl = imageUrl;
@@ -173,16 +169,12 @@ app.post('/api/process-nasa-image', async (req, res) => {
     }
 });
 
-// NEW: Endpoint to process an image from a direct URL with robust cleanup
 app.post('/api/process-url', async (req, res) => {
     const { imageUrl } = req.body;
     console.log(`\n--- New URL Request ---`);
     console.log(`[INIT] Processing request for URL: ${imageUrl}`);
-
     if (!imageUrl) { return res.status(400).send('Image URL is required.'); }
-
     let imageId, title, tempImagePath, imageFolderPath, relativeDziPath;
-
     try {
         imageId = crypto.createHash('md5').update(imageUrl).digest('hex');
         const urlObj = new URL(imageUrl);
@@ -191,31 +183,23 @@ app.post('/api/process-url', async (req, res) => {
         const dziPath = path.join(imageFolderPath, 'tiles.dzi');
         relativeDziPath = `gigaimages/${imageId}/tiles.dzi`;
         tempImagePath = path.join(__dirname, 'data', `${imageId}_temp${path.extname(title) || '.tmp'}`);
-        
         await fs.access(dziPath);
         console.log(`[CACHE HIT] Image from URL ${imageUrl} already processed. Serving from cache.`);
         return res.json({ id: imageId, path: relativeDziPath });
     } catch (e) {
-        if (e.code !== 'ENOENT') { // If error is not "file not found", it's a real issue.
+        if (e.code !== 'ENOENT') {
             console.error("Error during initial setup:", e.message);
             return res.status(500).send("An unexpected error occurred.");
         }
         console.log(`[CACHE MISS] Image from URL not found. Starting new processing workflow.`);
     }
-
     try {
-        // 1. Download the image
         console.log(`[DOWNLOAD] Starting download from ${imageUrl} to ${tempImagePath}...`);
         const writer = require('fs').createWriteStream(tempImagePath);
         const downloadResponse = await axios({ url: imageUrl, method: 'GET', responseType: 'stream' });
         downloadResponse.data.pipe(writer);
-        await new Promise((resolve, reject) => {
-            writer.on('finish', resolve);
-            writer.on('error', reject);
-        });
+        await new Promise((resolve, reject) => { writer.on('finish', resolve); writer.on('error', reject); });
         console.log('[DOWNLOAD] Download complete.');
-
-        // 2. Process with VIPS
         await fs.mkdir(imageFolderPath, { recursive: true });
         const vipsCommand = `vips dzsave "${tempImagePath}" "${path.join(imageFolderPath, 'tiles')}"`;
         console.log(`[VIPS] Executing command: ${vipsCommand}`);
@@ -229,8 +213,6 @@ app.post('/api/process-url', async (req, res) => {
                 resolve(stdout);
             });
         });
-
-        // 3. Update Databases
         console.log(`[DB] Updating databases...`);
         const [imagesDbData, annotationsDbData] = await Promise.all([ fs.readFile(imagesDbPath, 'utf8'), fs.readFile(annotationsDbPath, 'utf8') ]);
         const imagesDb = JSON.parse(imagesDbData);
@@ -244,15 +226,11 @@ app.post('/api/process-url', async (req, res) => {
             fs.writeFile(annotationsDbPath, JSON.stringify(annotationsDb, null, 2))
         ]);
         console.log(`[DB] Databases updated.`);
-
-        // 4. Final success response
         console.log(`[SUCCESS] Finished processing URL ${imageUrl}.`);
         res.status(201).json({ id: imageId, path: relativeDziPath });
-
     } catch (error) {
         console.error(`[ERROR] An error occurred during URL processing: ${error.message}`);
         console.log('[CLEANUP] Deleting temporary and processed files due to error...');
-        // Clean up both the temp file and the output directory on any failure
         await Promise.allSettled([
             fs.unlink(tempImagePath),
             fs.rm(imageFolderPath, { recursive: true, force: true })
@@ -260,22 +238,25 @@ app.post('/api/process-url', async (req, res) => {
         console.log('[CLEANUP] Cleanup complete.');
         return res.status(500).send(`Failed to process image from URL. Reason: ${error.message}`);
     } finally {
-        // Ensure the temp file is always removed after processing finishes (success or fail)
         await fs.unlink(tempImagePath).catch(() => {});
     }
 });
 
-// Search NASA API
+// FIXED: Search NASA API
 app.get('/api/nasa/search', async (req, res) => {
     const query = req.query.q;
     console.log(`Received NASA search request with query: "${query}"`);
     if (!query) { return res.status(400).send('Search query is required.'); }
-    const highResQuery = `${query} HiRISE gigapan`;
-    console.log(`Augmented search query for high-res: "${highResQuery}"`);
 
     try {
         const nasaApiUrl = `https://images-api.nasa.gov/search`;
-        const response = await axios.get(nasaApiUrl, { params: { q: highResQuery, media_type: 'image' } });
+        // FIX: Using the raw user query, removing hardcoded keywords
+        const response = await axios.get(nasaApiUrl, {
+            params: { 
+                q: query, 
+                media_type: 'image' 
+            }
+        });
         const results = response.data.collection.items.map(item => ({
             nasa_id: item.data[0].nasa_id,
             title: item.data[0].title,
@@ -288,6 +269,102 @@ app.get('/api/nasa/search', async (req, res) => {
         res.status(500).send('Error searching NASA images.');
     }
 });
+
+
+// ...existing code...
+app.post('/api/process-url', async (req, res) => {
+    const { imageUrl } = req.body;
+    console.log(`\n--- New URL Request ---`);
+    console.log(`[INIT] Processing request for URL: ${imageUrl}`);
+    if (!imageUrl) { return res.status(400).send('Image URL is required.'); }
+    let imageId, title, tempImagePath, imageFolderPath, relativeDziPath, isIMG = false, tiffPath;
+    try {
+        imageId = crypto.createHash('md5').update(imageUrl).digest('hex');
+        const urlObj = new URL(imageUrl);
+        title = path.basename(urlObj.pathname);
+        imageFolderPath = path.join(gigaImagesPath, imageId);
+        const dziPath = path.join(imageFolderPath, 'tiles.dzi');
+        relativeDziPath = `gigaimages/${imageId}/tiles.dzi`;
+        isIMG = title.toLowerCase().endsWith('.img');
+        tempImagePath = path.join(__dirname, 'data', `${imageId}_temp${path.extname(title) || '.tmp'}`);
+        tiffPath = isIMG ? path.join(__dirname, 'data', `${imageId}_converted.tif`) : tempImagePath;
+        await fs.access(dziPath);
+        console.log(`[CACHE HIT] Image from URL ${imageUrl} already processed. Serving from cache.`);
+        return res.json({ id: imageId, path: relativeDziPath });
+    } catch (e) {
+        if (e.code !== 'ENOENT') {
+            console.error("Error during initial setup:", e.message);
+            return res.status(500).send("An unexpected error occurred.");
+        }
+        console.log(`[CACHE MISS] Image from URL not found. Starting new processing workflow.`);
+    }
+    try {
+        console.log(`[DOWNLOAD] Starting download from ${imageUrl} to ${tempImagePath}...`);
+        const writer = require('fs').createWriteStream(tempImagePath);
+        const downloadResponse = await axios({ url: imageUrl, method: 'GET', responseType: 'stream' });
+        downloadResponse.data.pipe(writer);
+        await new Promise((resolve, reject) => { writer.on('finish', resolve); writer.on('error', reject); });
+        console.log('[DOWNLOAD] Download complete.');
+
+        // If .IMG, convert to .tif using gdal_translate
+        if (isIMG) {
+            console.log('[GDAL] Detected .IMG file. Converting to TIFF...');
+            await new Promise((resolve, reject) => {
+                exec(`gdal_translate -of GTiff "${tempImagePath}" "${tiffPath}"`, (error, stdout, stderr) => {
+                    if (error) {
+                        console.error(`[GDAL] Error: ${stderr}`);
+                        return reject(new Error('Failed to convert .IMG to TIFF. Make sure GDAL is installed and the file is a valid PDS image.'));
+                    }
+                    console.log('[GDAL] Conversion to TIFF complete.');
+                    resolve(stdout);
+                });
+            });
+        }
+
+        await fs.mkdir(imageFolderPath, { recursive: true });
+        const vipsCommand = `vips dzsave "${isIMG ? tiffPath : tempImagePath}" "${path.join(imageFolderPath, 'tiles')}"`;
+        console.log(`[VIPS] Executing command: ${vipsCommand}`);
+        await new Promise((resolve, reject) => {
+            exec(vipsCommand, (error, stdout, stderr) => {
+                if (error) {
+                    console.error(`[VIPS] Error: ${stderr}`);
+                    return reject(new Error('Failed to process image with VIPS. Make sure VIPS is installed and in your PATH.'));
+                }
+                console.log(`[VIPS] Image processing complete.`);
+                resolve(stdout);
+            });
+        });
+        console.log(`[DB] Updating databases...`);
+        const [imagesDbData, annotationsDbData] = await Promise.all([ fs.readFile(imagesDbPath, 'utf8'), fs.readFile(annotationsDbPath, 'utf8') ]);
+        const imagesDb = JSON.parse(imagesDbData);
+        const annotationsDb = JSON.parse(annotationsDbData);
+        if (!imagesDb.find(img => img.id === imageId)) {
+            imagesDb.push({ id: imageId, name: title, path: relativeDziPath, source: 'url' });
+            if (!annotationsDb[imageId]) { annotationsDb[imageId] = []; }
+        }
+        await Promise.all([
+            fs.writeFile(imagesDbPath, JSON.stringify(imagesDb, null, 2)),
+            fs.writeFile(annotationsDbPath, JSON.stringify(annotationsDb, null, 2))
+        ]);
+        console.log(`[DB] Databases updated.`);
+        console.log(`[SUCCESS] Finished processing URL ${imageUrl}.`);
+        res.status(201).json({ id: imageId, path: relativeDziPath });
+    } catch (error) {
+        console.error(`[ERROR] An error occurred during URL processing: ${error.message}`);
+        console.log('[CLEANUP] Deleting temporary and processed files due to error...');
+        await Promise.allSettled([
+            fs.unlink(tempImagePath),
+            isIMG ? fs.unlink(tiffPath).catch(() => {}) : Promise.resolve(),
+            fs.rm(imageFolderPath, { recursive: true, force: true })
+        ]);
+        console.log('[CLEANUP] Cleanup complete.');
+        return res.status(500).send(`Failed to process image from URL. Reason: ${error.message}`);
+    } finally {
+        await fs.unlink(tempImagePath).catch(() => {});
+        if (isIMG) await fs.unlink(tiffPath).catch(() => {});
+    }
+});
+// ...existing code...
 
 // Annotation APIs
 app.get('/api/images/:id/annotations', async (req, res) => {
@@ -387,9 +464,100 @@ app.delete('/api/images/:id', async (req, res) => {
     }
 });
 
+// ...existing code...
+app.post('/api/process-url', async (req, res) => {
+    const { imageUrl } = req.body;
+    console.log(`\n--- New URL Request ---`);
+    console.log(`[INIT] Processing request for URL: ${imageUrl}`);
+    if (!imageUrl) { return res.status(400).send('Image URL is required.'); }
+    let imageId, title, tempImagePath, imageFolderPath, relativeDziPath, isIMG = false, tiffPath;
+    try {
+        imageId = crypto.createHash('md5').update(imageUrl).digest('hex');
+        const urlObj = new URL(imageUrl);
+        title = path.basename(urlObj.pathname);
+        imageFolderPath = path.join(gigaImagesPath, imageId);
+        const dziPath = path.join(imageFolderPath, 'tiles.dzi');
+        relativeDziPath = `gigaimages/${imageId}/tiles.dzi`;
+        isIMG = title.toLowerCase().endsWith('.img');
+        tempImagePath = path.join(__dirname, 'data', `${imageId}_temp${path.extname(title) || '.tmp'}`);
+        tiffPath = isIMG ? path.join(__dirname, 'data', `${imageId}_converted.tif`) : tempImagePath;
+        await fs.access(dziPath);
+        console.log(`[CACHE HIT] Image from URL ${imageUrl} already processed. Serving from cache.`);
+        return res.json({ id: imageId, path: relativeDziPath });
+    } catch (e) {
+        if (e.code !== 'ENOENT') {
+            console.error("Error during initial setup:", e.message);
+            return res.status(500).send("An unexpected error occurred.");
+        }
+        console.log(`[CACHE MISS] Image from URL not found. Starting new processing workflow.`);
+    }
+    try {
+        console.log(`[DOWNLOAD] Starting download from ${imageUrl} to ${tempImagePath}...`);
+        const writer = require('fs').createWriteStream(tempImagePath);
+        const downloadResponse = await axios({ url: imageUrl, method: 'GET', responseType: 'stream' });
+        downloadResponse.data.pipe(writer);
+        await new Promise((resolve, reject) => { writer.on('finish', resolve); writer.on('error', reject); });
+        console.log('[DOWNLOAD] Download complete.');
 
-// ... (the rest of the server.js file: search, annotations, app.listen, etc.)
+        // If .IMG, convert to .tif using gdal_translate
+        if (isIMG) {
+            console.log('[GDAL] Detected .IMG file. Converting to TIFF...');
+            await new Promise((resolve, reject) => {
+                exec(`gdal_translate -of GTiff "${tempImagePath}" "${tiffPath}"`, (error, stdout, stderr) => {
+                    if (error) {
+                        console.error(`[GDAL] Error: ${stderr}`);
+                        return reject(new Error('Failed to convert .IMG to TIFF. Make sure GDAL is installed and the file is a valid PDS image.'));
+                    }
+                    console.log('[GDAL] Conversion to TIFF complete.');
+                    resolve(stdout);
+                });
+            });
+        }
 
+        await fs.mkdir(imageFolderPath, { recursive: true });
+        const vipsCommand = `vips dzsave "${isIMG ? tiffPath : tempImagePath}" "${path.join(imageFolderPath, 'tiles')}"`;
+        console.log(`[VIPS] Executing command: ${vipsCommand}`);
+        await new Promise((resolve, reject) => {
+            exec(vipsCommand, (error, stdout, stderr) => {
+                if (error) {
+                    console.error(`[VIPS] Error: ${stderr}`);
+                    return reject(new Error('Failed to process image with VIPS. Make sure VIPS is installed and in your PATH.'));
+                }
+                console.log(`[VIPS] Image processing complete.`);
+                resolve(stdout);
+            });
+        });
+        console.log(`[DB] Updating databases...`);
+        const [imagesDbData, annotationsDbData] = await Promise.all([ fs.readFile(imagesDbPath, 'utf8'), fs.readFile(annotationsDbPath, 'utf8') ]);
+        const imagesDb = JSON.parse(imagesDbData);
+        const annotationsDb = JSON.parse(annotationsDbData);
+        if (!imagesDb.find(img => img.id === imageId)) {
+            imagesDb.push({ id: imageId, name: title, path: relativeDziPath, source: 'url' });
+            if (!annotationsDb[imageId]) { annotationsDb[imageId] = []; }
+        }
+        await Promise.all([
+            fs.writeFile(imagesDbPath, JSON.stringify(imagesDb, null, 2)),
+            fs.writeFile(annotationsDbPath, JSON.stringify(annotationsDb, null, 2))
+        ]);
+        console.log(`[DB] Databases updated.`);
+        console.log(`[SUCCESS] Finished processing URL ${imageUrl}.`);
+        res.status(201).json({ id: imageId, path: relativeDziPath });
+    } catch (error) {
+        console.error(`[ERROR] An error occurred during URL processing: ${error.message}`);
+        console.log('[CLEANUP] Deleting temporary and processed files due to error...');
+        await Promise.allSettled([
+            fs.unlink(tempImagePath),
+            isIMG ? fs.unlink(tiffPath).catch(() => {}) : Promise.resolve(),
+            fs.rm(imageFolderPath, { recursive: true, force: true })
+        ]);
+        console.log('[CLEANUP] Cleanup complete.');
+        return res.status(500).send(`Failed to process image from URL. Reason: ${error.message}`);
+    } finally {
+        await fs.unlink(tempImagePath).catch(() => {});
+        if (isIMG) await fs.unlink(tiffPath).catch(() => {});
+    }
+});
+// ...existing code...
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server is running at http://localhost:${PORT}`);

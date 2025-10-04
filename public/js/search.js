@@ -4,6 +4,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const resultsContainer = document.getElementById('nasaResults');
     const directDownloadForm = document.getElementById('directDownloadForm');
     const imageUrlInput = document.getElementById('imageUrlInput');
+    const imgUrlError = document.getElementById('imgUrlError'); // NEW
+
 
     // --- EVENT LISTENERS ---
 
@@ -133,4 +135,42 @@ document.addEventListener('DOMContentLoaded', () => {
         let helpText = showHelpText ? '<p>Please try another search or select a different image.</p>' : '';
         resultsContainer.innerHTML = `<p class="error">${message}</p>${helpText}`;
     }
+
+
+
+    // NEW: Listener for Direct URL Submission
+directDownloadForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    imgUrlError.textContent = '';
+    const imageUrl = imageUrlInput.value.trim();
+    if (!imageUrl) return;
+
+    // Optional: Warn user if .IMG file
+    if (imageUrl.toLowerCase().endsWith('.img')) {
+        imgUrlError.textContent = "Processing .IMG files may take longer. Only PDS-format .IMG files are supported.";
+    }
+
+    displayStatus(`Processing image from URL. This may take a moment...`);
+
+    try {
+        const response = await fetch('/api/process-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageUrl }),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            imgUrlError.textContent = errorText;
+            displayError(errorText, true);
+            return;
+        }
+
+        const processedImage = await response.json();
+        window.location.href = `/?image_id=${processedImage.id}`;
+    } catch (error) {
+        imgUrlError.textContent = error.message;
+        displayError(error.message, true);
+    }
+});
 });

@@ -29,6 +29,16 @@
                 <button type="submit">Process URL</button>
             </form>
         </div>
+        <div class="direct-download">
+    <p style="font-weight: bold; margin-top: 25px;">OR</p>
+    <h4>Process Image Directly from URL</h4>
+    <p>Paste a link to a high-resolution image file (.tif, .jpg, <b>.IMG</b>, etc.)</p>
+    <form id="directDownloadForm">
+        <input type="url" id="imageUrlInput" placeholder="https://.../image.tif or .IMG" required>
+        <button type="submit">Process URL</button>
+    </form>
+    <div id="imgUrlError" class="error-message"></div>
+</div>
         </div>
     <script src="js/search.js"></script>
 </body>

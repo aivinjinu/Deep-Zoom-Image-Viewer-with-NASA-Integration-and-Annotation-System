@@ -3,43 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Search NASA Images</title>
+    <title>Add New Image</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="search-page">
     <div class="search-container">
-        <h1>Search NASA's Image Archive</h1>
-        <p>Find high-resolution scientific images of planets, nebulae, and more.</p>
+        <h1>Add a New Image</h1>
+        <p>Search NASA's archive or process a direct image URL.</p>
         <a href="/" class="home-link">&larr; Back to Viewer</a>
 
-        <div class="nasa-search">
-            <form id="nasaSearchForm">
-                <input type="text" id="nasaSearchInput" placeholder="e.g., Hubble Andromeda" required>
-                <button type="submit">Search</button>
+        <div class="unified-search">
+            <form id="unifiedSearchForm">
+                <input type="text" id="unifiedSearchInput" placeholder="e.g., Hubble Andromeda or https://.../image.img" required>
+                <button type="submit">Process</button>
             </form>
-            <div id="nasaResults" class="nasa-results"></div>
+            <div id="results" class="nasa-results"></div>
         </div>
-
-        <div class="direct-download">
-            <p style="font-weight: bold; margin-top: 25px;">OR</p>
-            <h4>Process Image Directly from URL</h4>
-            <p>Paste a link to a high-resolution image file (.tif, .jpg, etc.)</p>
-            <form id="directDownloadForm">
-                <input type="url" id="imageUrlInput" placeholder="https://.../image.tif" required>
-                <button type="submit">Process URL</button>
-            </form>
-        </div>
-        <div class="direct-download">
-    <p style="font-weight: bold; margin-top: 25px;">OR</p>
-    <h4>Process Image Directly from URL</h4>
-    <p>Paste a link to a high-resolution image file (.tif, .jpg, <b>.IMG</b>, etc.)</p>
-    <form id="directDownloadForm">
-        <input type="url" id="imageUrlInput" placeholder="https://.../image.tif or .IMG" required>
-        <button type="submit">Process URL</button>
-    </form>
-    <div id="imgUrlError" class="error-message"></div>
-</div>
-        </div>
+    </div>
     <script src="js/search.js"></script>
 </body>
 </html>

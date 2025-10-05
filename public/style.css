@@ -6,102 +6,576 @@
   --primary-color: #007bff;
   --danger-color: #dc3545;
   --success-color: #28a745;
-  --secondary-color: #6c757d;
+  --warning-color: #ffa500;
+  --border-color: #555;
 }
-body { margin: 0; font-family: sans-serif; background-color: var(--bg-color); color: var(--text-color); overflow: hidden; }
 
-/* Styles for the separate Search Page (no changes) */
-.search-page { background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; color: #333; }
-.search-container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 700px; text-align: center; }
-.home-link { display: inline-block; margin-bottom: 20px; color: var(--primary-color); text-decoration: none; }
-#nasaSearchForm { display: flex; }
-#nasaSearchInput { flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px 0 0 4px; }
-#nasaSearchForm button { padding: 8px 12px; border: none; background-color: var(--primary-color); color: white; cursor: pointer; border-radius: 0 4px 4px 0; }
-.nasa-results { margin-top: 15px; max-height: 400px; overflow-y: auto; text-align: left; }
-.nasa-item { display: flex; align-items: center; padding: 8px; cursor: pointer; border-radius: 4px; transition: background-color 0.2s; }
-.nasa-item:hover { background-color: #eee; }
-.nasa-item img { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; margin-right: 10px; }
-
-
-/* Main Viewer Page Styles */
-.viewer-container { display: flex; width: 100vw; height: 100vh; }
-.sidebar { width: var(--sidebar-width); background-color: var(--panel-color); flex-shrink: 0; transition: margin-left 0.3s ease-in-out; display: flex; flex-direction: column; }
-.sidebar.collapsed { margin-left: calc(-1 * var(--sidebar-width)); }
-.sidebar-content { padding: 15px; overflow-y: auto; }
-.search-button { display: block; width: 100%; box-sizing: border-box; padding: 10px; background-color: var(--success-color); color: white; text-align: center; text-decoration: none; border-radius: 5px; margin-bottom: 20px; }
-
-.image-selector-container { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
-#imageSelector { padding: 8px; background-color: #3a3a44; color: var(--text-color); border: 1px solid #555; border-radius: 4px; }
-#deleteImageBtn { padding: 8px 10px; background-color: var(--danger-color); border: 1px solid var(--danger-color); color: white; border-radius: 4px; cursor: pointer; font-size: 14px; transition: background-color 0.2s; }
-#deleteImageBtn:hover { background-color: #c82333; }
-
-.image-library h4, .annotations-panel h4, #compositionTools h4 { margin-top: 15px; margin-bottom: 10px; border-bottom: 1px solid #444; padding-bottom: 5px;}
-
-/* Composition Mode Styles */
-.hidden { display: none !important; }
-.utility-button { width: 100%; padding: 10px; margin-top: 20px; border: 1px solid var(--secondary-color); background: none; color: var(--text-color); cursor: pointer; border-radius: 4px; }
-#compositionWorkspace { margin-top: 10px; }
-
-/* --- NEW STYLES FOR COMPOSITION SETTINGS --- */
-.composition-settings {
-    background-color: #3a3a44;
-    padding: 10px 12px;
-    border-radius: 4px;
-    margin-bottom: 10px;
-    font-size: 0.9em;
+* {
+  box-sizing: border-box;
 }
-.composition-settings label {
-    display: block;
-    margin-bottom: 5px;
-}
-.composition-settings input[type="range"] {
-    width: 100%;
-    margin-bottom: 10px;
-}
-.overlap-control {
-    display: flex;
-    align-items: center;
-}
-.overlap-control label {
-    margin: 0 0 0 8px;
-    user-select: none; /* Prevents text selection on click */
-}
-/* --- END OF NEW STYLES --- */
 
-#compositionImageList { max-height: 200px; overflow-y: auto; border: 1px solid #444; border-radius: 4px; padding: 5px; margin-bottom: 10px; }
-.composition-item { display: block; padding: 8px; cursor: pointer; border-radius: 3px; }
-.composition-item:hover { background-color: #3a3a44; }
-.composition-item input { margin-right: 10px; }
-.composition-actions { display: flex; gap: 10px; }
-.primary-action, .secondary-action { flex-grow: 1; padding: 10px; border: none; color: white; border-radius: 4px; cursor: pointer; }
-.primary-action { background-color: var(--primary-color); }
-.secondary-action { background-color: var(--secondary-color); }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  overflow: hidden;
+}
 
-/* Interactive Tools Styles */
-#compositionTools { margin-top: 15px; }
-.image-tool-panel { margin-bottom: 10px; padding: 10px; background-color: #3a3a44; border-radius: 4px; }
-.image-tool-panel p { margin: 0 0 8px 0; font-size: 0.9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.image-tool-panel label { font-size: 0.8em; }
-.image-tool-panel input[type="range"] { width: 100%; }
-#addPinBtn { width: 100%; padding: 10px; background-color: var(--primary-color); border: none; color: white; border-radius: 5px; cursor: pointer; font-size: 16px; margin-top: 15px; }
-.pins-list { list-style: none; padding: 0; margin-top: 15px; }
-.pins-list li { background-color: #3a3a44; padding: 10px; margin-bottom: 8px; border-radius: 4px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.viewport { flex-grow: 1; position: relative; }
-#openseadragon-viewer { width: 100%; height: 100%; padding-left: 60px; box-sizing: border-box; }
-.sidebar-toggle { position: absolute; top: 15px; left: 15px; z-index: 1000; background-color: var(--panel-color); border: 1px solid #444; color: var(--text-color); width: 40px; height: 40px; border-radius: 5px; cursor: pointer; font-size: 20px; transition: all 0.1s ease-in-out; }
-.pin-marker { width: 24px; height: 24px; background: #ff4757; border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%); }
+/* ===========================
+   SEARCH PAGE STYLES
+   =========================== */
+
+.search-page {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
+  overflow: auto;
+}
+
+.search-container {
+  background: white;
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: 700px;
+  text-align: center;
+}
+
+.search-container h1 {
+  color: #333;
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 28px;
+}
+
+.search-container > p {
+  color: #666;
+  margin-bottom: 20px;
+}
+
+.home-link {
+  display: inline-block;
+  margin-bottom: 20px;
+  color: var(--primary-color);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.home-link:hover {
+  color: #0056b3;
+  text-decoration: underline;
+}
+
+.nasa-search {
+  margin-top: 20px;
+}
+
+.nasa-search h3 {
+  color: #333;
+  margin-bottom: 15px;
+}
+
+#nasaSearchForm,
+#directDownloadForm {
+  display: flex;
+  gap: 0;
+  margin-bottom: 15px;
+}
+
+#nasaSearchInput,
+#imageUrlInput {
+  flex-grow: 1;
+  padding: 12px 15px;
+  border: 2px solid #ddd;
+  border-radius: 6px 0 0 6px;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+#nasaSearchInput:focus,
+#imageUrlInput:focus {
+  border-color: var(--primary-color);
+}
+
+#nasaSearchForm button,
+#directDownloadForm button {
+  padding: 12px 24px;
+  border: none;
+  background-color: var(--primary-color);
+  color: white;
+  cursor: pointer;
+  border-radius: 0 6px 6px 0;
+  font-size: 15px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+}
+
+#nasaSearchForm button:hover:not(:disabled),
+#directDownloadForm button:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+#nasaSearchForm button:disabled,
+#directDownloadForm button:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.nasa-results {
+  margin-top: 20px;
+  max-height: 450px;
+  overflow-y: auto;
+  text-align: left;
+  border-radius: 6px;
+}
+
+.nasa-results:empty {
+  display: none;
+}
+
+.nasa-item {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+  gap: 12px;
+}
+
+.nasa-item:hover {
+  background-color: #f5f5f5;
+}
+
+.nasa-item img {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+  background-color: #f0f0f0;
+}
+
+.nasa-item-title {
+  color: #333;
+  font-size: 14px;
+  line-height: 1.4;
+  flex-grow: 1;
+}
+
+.direct-download {
+  margin-top: 30px;
+  padding-top: 30px;
+  border-top: 2px solid #e0e0e0;
+}
+
+.direct-download h4 {
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.direct-download p {
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 15px;
+}
+
+/* Status and error messages */
+.status-message,
+.error-message,
+.help-text {
+  padding: 15px;
+  border-radius: 6px;
+  margin: 10px 0;
+  text-align: center;
+}
+
+.status-message {
+  background-color: #e7f3ff;
+  color: #004085;
+  border: 1px solid #b8daff;
+}
 
 .error-message {
-    color: #ff4757;
-    margin-top: 10px;
-    font-size: 1em;
-    text-align: left;
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
 }
-#imageUrlInput {
-    width: 100%;
-    padding: 8px;
-    border: 1px solid #ccc;
-    border-radius: 4px 0 0 4px;
-    margin-bottom: 8px;
-    box-sizing: border-box;
+
+.help-text {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeeba;
+  font-size: 14px;
+}
+
+/* ===========================
+   MAIN VIEWER PAGE STYLES
+   =========================== */
+
+.viewer-container {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+}
+
+.sidebar {
+  width: var(--sidebar-width);
+  background-color: var(--panel-color);
+  flex-shrink: 0;
+  transition: margin-left 0.3s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+}
+
+.sidebar.collapsed {
+  margin-left: calc(-1 * var(--sidebar-width));
+}
+
+.sidebar-content {
+  padding: 20px;
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+.sidebar-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar-content::-webkit-scrollbar-track {
+  background: var(--bg-color);
+}
+
+.sidebar-content::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb:hover {
+  background: #777;
+}
+
+.search-button {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  background-color: var(--success-color);
+  color: white;
+  text-align: center;
+  text-decoration: none;
+  border-radius: 6px;
+  margin-bottom: 25px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.search-button:hover {
+  background-color: #218838;
+}
+
+.image-library h4,
+.annotations-panel h4 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 16px;
+  color: var(--text-color);
+  font-weight: 600;
+}
+
+.image-selector-container {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  margin-bottom: 25px;
+}
+
+#imageSelector {
+  padding: 10px;
+  background-color: #3a3a44;
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+#imageSelector:focus {
+  border-color: var(--primary-color);
+}
+
+#imageSelector:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+#deleteImageBtn {
+  padding: 10px;
+  background-color: var(--danger-color);
+  border: 1px solid var(--danger-color);
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  transition: background-color 0.2s;
+  outline: none;
+}
+
+#deleteImageBtn:hover:not(:disabled) {
+  background-color: #c82333;
+  border-color: #c82333;
+}
+
+#deleteImageBtn:disabled {
+  background-color: #6c757d;
+  border-color: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+#addPinBtn {
+  width: 100%;
+  padding: 12px;
+  background-color: var(--primary-color);
+  border: none;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 500;
+  margin-bottom: 15px;
+  transition: background-color 0.2s;
+  outline: none;
+}
+
+#addPinBtn:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+#addPinBtn:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.pins-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.pins-list li {
+  background-color: #3a3a44;
+  padding: 12px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background-color 0.2s;
+  border: 1px solid transparent;
+}
+
+.pins-list li:hover {
+  background-color: #4a4a54;
+  border-color: var(--primary-color);
+}
+
+.pins-list:empty::after {
+  content: 'No annotations yet. Click "Add Pin" to create one.';
+  display: block;
+  padding: 15px;
+  text-align: center;
+  color: #999;
+  font-size: 13px;
+  font-style: italic;
+}
+
+.viewport {
+  flex-grow: 1;
+  position: relative;
+  background-color: var(--bg-color);
+}
+
+#openseadragon-viewer {
+  width: 100%;
+  height: 100%;
+  padding-left: 60px;
+  box-sizing: border-box;
+}
+
+.sidebar-toggle {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  z-index: 1000;
+  background-color: var(--panel-color);
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 20px;
+  transition: all 0.2s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.sidebar-toggle:hover {
+  background-color: #3a3a44;
+  border-color: var(--primary-color);
+}
+
+.sidebar-toggle:active {
+  transform: scale(0.95);
+}
+
+.pin-marker {
+  width: 24px;
+  height: 24px;
+  background: #ff4757;
+  border: 3px solid white;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  transition: transform 0.2s;
+}
+
+.pin-marker:hover {
+  transform: translate(-50%, -50%) scale(1.2);
+}
+
+/* ===========================
+   RESPONSIVE DESIGN
+   =========================== */
+
+@media (max-width: 768px) {
+  .search-container {
+    padding: 25px;
+    margin: 10px;
+  }
+
+  .search-container h1 {
+    font-size: 22px;
+  }
+
+  #nasaSearchForm,
+  #directDownloadForm {
+    flex-direction: column;
+  }
+
+  #nasaSearchInput,
+  #imageUrlInput {
+    border-radius: 6px;
+    margin-bottom: 10px;
+  }
+
+  #nasaSearchForm button,
+  #directDownloadForm button {
+    border-radius: 6px;
+  }
+
+  .sidebar {
+    --sidebar-width: 280px;
+  }
+
+  #openseadragon-viewer {
+    padding-left: 50px;
+  }
+
+  .sidebar-toggle {
+    width: 35px;
+    height: 35px;
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .sidebar {
+    --sidebar-width: 100vw;
+  }
+
+  .sidebar.collapsed {
+    margin-left: -100vw;
+  }
+
+  #openseadragon-viewer {
+    padding-left: 0;
+    padding-top: 60px;
+  }
+
+  .sidebar-toggle {
+    top: 10px;
+    left: 10px;
+  }
+}
+
+/* ===========================
+   LOADING STATES
+   =========================== */
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading::after {
+  content: '';
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+/* ===========================
+   ACCESSIBILITY
+   =========================== */
+
+*:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
 }

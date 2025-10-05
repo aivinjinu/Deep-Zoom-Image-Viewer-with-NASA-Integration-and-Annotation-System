@@ -1,17 +1,15 @@
 document.addEventListener('DOMContentLoaded', () => {
-    if (!window.OpenSeadragon) { return console.error('OpenSeadragon library not found.'); }
+    if (!window.OpenSeadragon) {
+        console.error('OpenSeadragon library not found.');
+        alert('Critical error: OpenSeadragon library not loaded. Please refresh the page.');
+        return;
+    }
 
     let currentImageId = null;
     let isPinningMode = false;
     let pins = [];
     let pinCounter = 0;
-    let libraryImages = [];
-    
-    // --- Composition State ---
-    let isCompositionMode = false;
-    let activeCompositionItems = [];
-    let draggedItem = null;
-    let dragStartPosition = null;
+    let isLoading = false;
 
     // --- DOM REFERENCES ---
     const sidebar = document.getElementById('sidebar');
@@ -20,37 +18,69 @@ document.addEventListener('DOMContentLoaded', () => {
     const deleteImageBtn = document.getElementById('deleteImageBtn');
     const addPinBtn = document.getElementById('addPinBtn');
     const pinsList = document.getElementById('pinsList');
-    const annotationsPanel = document.getElementById('annotationsPanel');
-    // Composition UI References
-    const singleImageView = document.getElementById('singleImageView');
-    const startCompositionBtn = document.getElementById('startCompositionBtn');
-    const compositionWorkspace = document.getElementById('compositionWorkspace');
-    const compositionImageList = document.getElementById('compositionImageList');
-    const loadToCanvasBtn = document.getElementById('loadToCanvasBtn');
-    const cancelCompositionBtn = document.getElementById('cancelCompositionBtn');
-    const compositionTools = document.getElementById('compositionTools');
-    const imageToolsContainer = document.getElementById('imageToolsContainer');
-    // New Controls References
-    const gapSlider = document.getElementById('gapSlider');
-    const overlapCheckbox = document.getElementById('overlapCheckbox');
     
-    // --- INITIALIZE VIEWER ---
-    const viewer = OpenSeadragon({
-        id: "openseadragon-viewer",
-        prefixUrl: "https://openseadragon.github.io/openseadragon/images/",
-        showNavigator: true,
-        collectionMode: true,
-        gestureSettingsMouse: { clickToZoom: false },
-    });
+    // Validate DOM elements
+    if (!sidebar || !sidebarToggle || !imageSelector || !deleteImageBtn || !addPinBtn || !pinsList) {
+        console.error('Critical DOM elements missing');
+        alert('Application error: Required elements not found. Please refresh the page.');
+        return;
+    }
 
-    // --- CORE FUNCTIONS (Single Image Mode) ---
+    // --- INITIALIZE VIEWER ---
+    let viewer;
+    try {
+        viewer = OpenSeadragon({
+            id: "openseadragon-viewer",
+            prefixUrl: "https://openseadragon.github.io/openseadragon/images/",
+            showNavigator: true,
+            showNavigationControl: true,
+            animationTime: 0.5,
+            blendTime: 0.1,
+            constrainDuringPan: false,
+            maxZoomPixelRatio: 2,
+            minZoomLevel: 0.8,
+            visibilityRatio: 1,
+            zoomPerScroll: 2
+        });
+    } catch (error) {
+        console.error('Failed to initialize OpenSeadragon viewer:', error);
+        alert('Failed to initialize image viewer. Please refresh the page.');
+        return;
+    }
+
+    // --- CORE FUNCTIONS ---
+
+    // Fetches all images from the backend and populates the dropdown
     async function loadLibrary() {
+        if (isLoading) {
+            console.log('Library load already in progress, skipping...');
+            return;
+        }
+
+        isLoading = true;
         try {
+            console.log('Loading image library...');
             const response = await fetch('/api/images');
-            libraryImages = await response.json();
             
+            if (!response.ok) {
+                throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+            }
+            
+            const images = await response.json();
+            
+            if (!Array.isArray(images)) {
+                throw new Error('Invalid response format from server');
+            }
+            
+            // Clear previous options
             imageSelector.innerHTML = '';
-            libraryImages.forEach(image => {
+            
+            // Populate dropdown
+            images.forEach(image => {
+                if (!image.id || !image.name || !image.path) {
+                    console.warn('Skipping invalid image entry:', image);
+                    return;
+                }
                 const option = document.createElement('option');
                 option.value = image.id;
                 option.textContent = image.name;
@@ -58,280 +88,333 @@ document.addEventListener('DOMContentLoaded', () => {
                 imageSelector.appendChild(option);
             });
             
+            console.log(`Loaded ${images.length} images into library`);
+            
+            // Handle URL parameter for specific image
             const urlParams = new URLSearchParams(window.location.search);
             const imageIdFromUrl = urlParams.get('image_id');
-            if (imageIdFromUrl && libraryImages.some(img => img.id === imageIdFromUrl)) {
+            
+            if (imageIdFromUrl && images.some(img => img.id === imageIdFromUrl)) {
                 imageSelector.value = imageIdFromUrl;
+                console.log(`Selecting image from URL: ${imageIdFromUrl}`);
             }
             
+            // Load the selected or first image
             const selectedOption = imageSelector.options[imageSelector.selectedIndex];
             if (selectedOption) {
                 switchImage(selectedOption.value, selectedOption.dataset.path);
+                deleteImageBtn.disabled = false;
             } else {
+                // Library is empty
+                console.log('No images in library');
                 currentImageId = null;
                 viewer.close();
                 loadAnnotations(null);
+                deleteImageBtn.disabled = true;
+                addPinBtn.disabled = true;
             }
-        } catch (error) { console.error('Failed to load image library:', error); }
+
+        } catch (error) {
+            console.error('Failed to load image library:', error);
+            alert(`Failed to load image library: ${error.message}`);
+            deleteImageBtn.disabled = true;
+            addPinBtn.disabled = true;
+        } finally {
+            isLoading = false;
+        }
     }
     
+    // Opens a new image in the viewer and loads its annotations
     function switchImage(id, path) {
-        if (currentImageId === id && !isCompositionMode) return;
-        currentImageId = id;
-        viewer.open(path);
-        loadAnnotations(id);
-        if (isPinningMode) resetPinningMode();
+        if (!id || !path) {
+            console.error('Invalid image parameters:', { id, path });
+            return;
+        }
+
+        if (currentImageId === id) {
+            console.log('Image already loaded, skipping switch');
+            return;
+        }
+
+        try {
+            console.log(`Switching to image: ${id}`);
+            currentImageId = id;
+            viewer.open(path);
+            loadAnnotations(id);
+            
+            if (isPinningMode) {
+                resetPinningMode();
+            }
+
+            addPinBtn.disabled = false;
+            deleteImageBtn.disabled = false;
+
+            // Update URL without page reload
+            const newUrl = new URL(window.location);
+            newUrl.searchParams.set('image_id', id);
+            window.history.replaceState({}, '', newUrl);
+
+        } catch (error) {
+            console.error('Failed to switch image:', error);
+            alert(`Failed to load image: ${error.message}`);
+        }
     }
     
+    // Fetches and displays annotations for the current image
     async function loadAnnotations(imageId) {
+        // Clear existing annotations
         pinsList.innerHTML = '';
         viewer.clearOverlays();
         pins = [];
         pinCounter = 0;
-        if (!imageId) return;
+
+        if (!imageId) {
+            console.log('No image ID provided, skipping annotation load');
+            return;
+        }
+
         try {
+            console.log(`Loading annotations for image: ${imageId}`);
             const response = await fetch(`/api/images/${imageId}/annotations`);
-            if (!response.ok) { return; }
-            pins = await response.json();
+            
+            if (!response.ok) {
+                if (response.status === 404) {
+                    console.log('No annotations found for this image');
+                    return;
+                }
+                throw new Error(`Server returned ${response.status}`);
+            }
+            
+            const loadedPins = await response.json();
+            
+            if (!Array.isArray(loadedPins)) {
+                throw new Error('Invalid annotations format');
+            }
+
+            pins = loadedPins;
             pinCounter = pins.length;
-            pins.forEach(renderPin);
-        } catch (error) { console.error('Failed to load annotations:', error); }
+            
+            pins.forEach(pin => {
+                if (validatePin(pin)) {
+                    renderPin(pin);
+                } else {
+                    console.warn('Skipping invalid pin:', pin);
+                }
+            });
+
+            console.log(`Loaded ${pins.length} annotations`);
+
+        } catch (error) {
+            console.error('Failed to load annotations:', error);
+            // Don't alert for annotation load failures - not critical
+        }
     }
 
+    // Validates pin structure
+    function validatePin(pin) {
+        return pin && 
+               pin.id && 
+               pin.text && 
+               pin.point && 
+               typeof pin.point.x === 'number' && 
+               typeof pin.point.y === 'number';
+    }
+    
+    // Renders a pin on the viewer and in the list
     function renderPin(pin) {
-        const pinElement = document.createElement('div');
-        pinElement.id = pin.id;
-        pinElement.className = 'pin-marker';
-        viewer.addOverlay({ element: pinElement, location: new OpenSeadragon.Point(pin.point.x, pin.point.y), placement: 'CENTER' });
-        const listItem = document.createElement('li');
-        listItem.textContent = pin.text;
-        listItem.dataset.pinId = pin.id;
-        pinsList.appendChild(listItem);
-        listItem.addEventListener('click', () => {
-            viewer.viewport.panTo(pin.point, false);
-            viewer.viewport.zoomTo(viewer.viewport.getMaxZoom(), pin.point, false);
-        });
+        try {
+            // Create pin marker on viewer
+            const pinElement = document.createElement('div');
+            pinElement.id = pin.id;
+            pinElement.className = 'pin-marker';
+            pinElement.title = pin.text;
+            
+            viewer.addOverlay({
+                element: pinElement,
+                location: new OpenSeadragon.Point(pin.point.x, pin.point.y),
+                placement: OpenSeadragon.Placement.CENTER
+            });
+
+            // Create list item
+            const listItem = document.createElement('li');
+            listItem.textContent = pin.text;
+            listItem.dataset.pinId = pin.id;
+            listItem.title = 'Click to navigate to this pin';
+            pinsList.appendChild(listItem);
+
+            // Navigate to pin on click
+            listItem.addEventListener('click', () => {
+                try {
+                    const point = new OpenSeadragon.Point(pin.point.x, pin.point.y);
+                    viewer.viewport.panTo(point, false);
+                    viewer.viewport.zoomTo(viewer.viewport.getMaxZoom() * 0.8, point, false);
+                } catch (error) {
+                    console.error('Failed to navigate to pin:', error);
+                }
+            });
+
+        } catch (error) {
+            console.error('Failed to render pin:', error);
+        }
     }
 
+    // Saves a new pin to the server
     async function savePin(imageId, pin) {
+        if (!imageId || !validatePin(pin)) {
+            console.error('Invalid pin data:', { imageId, pin });
+            return;
+        }
+
         try {
+            console.log(`Saving pin for image: ${imageId}`);
             const response = await fetch(`/api/images/${imageId}/annotations`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(pin),
             });
+
+            if (!response.ok) {
+                throw new Error(`Server returned ${response.status}`);
+            }
+
             const savedPin = await response.json();
             pins.push(savedPin);
             renderPin(savedPin);
-        } catch (error) { console.error('Failed to save pin:', error); }
+            console.log('Pin saved successfully');
+
+        } catch (error) {
+            console.error('Failed to save pin:', error);
+            alert(`Failed to save annotation: ${error.message}`);
+        }
     }
 
+    // Resets pinning mode
     function resetPinningMode() {
         isPinningMode = false;
         addPinBtn.textContent = '📍 Add Pin';
-    }
-
-    // --- COMPOSITION MODE FUNCTIONS ---
-    function enterCompositionMode() {
-        isCompositionMode = true;
-        singleImageView.classList.add('hidden');
-        compositionWorkspace.classList.remove('hidden');
-        startCompositionBtn.classList.add('hidden');
-        compositionTools.classList.add('hidden');
-        annotationsPanel.classList.add('hidden');
-        
-        compositionImageList.innerHTML = '';
-        if (libraryImages.length === 0) {
-            compositionImageList.innerHTML = '<p style="padding: 10px;">Your library is empty.</p>';
-            return;
-        }
-        libraryImages.forEach(image => {
-            const item = document.createElement('label');
-            item.className = 'composition-item';
-            item.innerHTML = `<input type="checkbox" data-id="${image.id}" data-path="${image.path}" data-name="${image.name}"> ${image.name}`;
-            compositionImageList.appendChild(item);
-        });
-    }
-
-    function exitCompositionMode() {
-        isCompositionMode = false;
-        draggedItem = null;
-        singleImageView.classList.remove('hidden');
-        compositionWorkspace.classList.add('hidden');
-        startCompositionBtn.classList.remove('hidden');
-        compositionTools.classList.add('hidden');
-        annotationsPanel.classList.remove('hidden');
-        
-        const selectedOption = imageSelector.options[imageSelector.selectedIndex];
-        if (selectedOption) {
-            switchImage(selectedOption.value, selectedOption.dataset.path);
-        } else {
-            viewer.close();
-        }
-    }
-
-    function loadImagesToWorkspace() {
-        const selectedCheckboxes = compositionImageList.querySelectorAll('input[type="checkbox"]:checked');
-        if (selectedCheckboxes.length < 1) {
-            alert('Please select at least one image.');
-            return;
-        }
-        
-        const isOverlapping = overlapCheckbox.checked;
-        const gap = parseFloat(gapSlider.value);
-
-        viewer.close();
-        pinsList.innerHTML = '';
-        activeCompositionItems = [];
-        
-        let offset = 0;
-        selectedCheckboxes.forEach(checkbox => {
-            const itemData = {
-                id: checkbox.dataset.id,
-                name: checkbox.dataset.name,
-                path: checkbox.dataset.path
-            };
-            const currentOffset = isOverlapping ? 0 : offset * gap;
-
-            viewer.addTiledImage({
-                tileSource: itemData.path,
-                x: currentOffset,
-                y: currentOffset,
-                opacity: 0.9,
-                success: (event) => {
-                    activeCompositionItems.push({ ...itemData, osdItem: event.item });
-                    renderCompositionTools();
-                }
-            });
-            offset++;
-        });
-        
-        singleImageView.classList.add('hidden');
-        compositionWorkspace.classList.add('hidden');
-        startCompositionBtn.classList.remove('hidden');
-        annotationsPanel.classList.add('hidden');
-    }
-
-    function renderCompositionTools() {
-        imageToolsContainer.innerHTML = '';
-        compositionTools.classList.remove('hidden');
-        
-        activeCompositionItems.forEach((item, index) => {
-            const panel = document.createElement('div');
-            panel.className = 'image-tool-panel';
-            panel.innerHTML = `
-                <p title="${item.name}">${item.name}</p>
-                <label for="opacity-slider-${index}">Opacity:</label>
-                <input type="range" id="opacity-slider-${index}" min="0" max="1" step="0.05" value="0.9">
-            `;
-            const slider = panel.querySelector('input[type="range"]');
-            slider.addEventListener('input', (e) => {
-                item.osdItem.setOpacity(parseFloat(e.target.value));
-            });
-            imageToolsContainer.appendChild(panel);
-        });
+        addPinBtn.style.backgroundColor = '';
     }
 
     // --- EVENT LISTENERS ---
-    sidebarToggle.addEventListener('click', () => sidebar.classList.toggle('collapsed'));
-    imageSelector.addEventListener('change', (e) => switchImage(e.target.value, e.target.options[e.target.selectedIndex].dataset.path));
     
+    // Toggle sidebar
+    sidebarToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('collapsed');
+    });
+
+    // Change selected image
+    imageSelector.addEventListener('change', (e) => {
+        const selectedOption = e.target.options[e.target.selectedIndex];
+        if (selectedOption) {
+            switchImage(selectedOption.value, selectedOption.dataset.path);
+        }
+    });
+
+    // Delete image button
     deleteImageBtn.addEventListener('click', async () => {
         const selectedOption = imageSelector.options[imageSelector.selectedIndex];
+        
         if (!selectedOption) {
             alert('No image selected to delete.');
             return;
         }
+
         const imageId = selectedOption.value;
         const imageName = selectedOption.textContent;
-        if (!confirm(`Are you sure you want to permanently delete "${imageName}"?\nThis action cannot be undone.`)) {
+
+        const confirmed = confirm(
+            `Are you sure you want to permanently delete "${imageName}"?\n\n` +
+            `This will remove:\n` +
+            `• The image and all its tiles\n` +
+            `• All annotations for this image\n\n` +
+            `This action cannot be undone.`
+        );
+
+        if (!confirmed) {
             return;
         }
+
+        // Disable button to prevent double-clicks
+        deleteImageBtn.disabled = true;
+        const originalText = deleteImageBtn.textContent;
+        deleteImageBtn.textContent = '⏳';
+
         try {
-            const response = await fetch(`/api/images/${imageId}`, { method: 'DELETE' });
+            console.log(`Deleting image: ${imageId}`);
+            const response = await fetch(`/api/images/${imageId}`, {
+                method: 'DELETE',
+            });
+
             if (!response.ok) {
                 const errorText = await response.text();
                 throw new Error(errorText || 'Failed to delete the image from the server.');
             }
+            
+            console.log('Image deleted successfully');
+            
+            // Reload the library to reflect the change
             await loadLibrary();
+
         } catch (error) {
             console.error('Deletion failed:', error);
             alert(`Could not delete the image: ${error.message}`);
+            deleteImageBtn.disabled = false;
+            deleteImageBtn.textContent = originalText;
         }
     });
 
+    // Add pin button
     addPinBtn.addEventListener('click', () => {
-        if (isCompositionMode) {
-            alert('Annotations are disabled in Composition Mode.');
+        if (!currentImageId) {
+            alert('Please select an image first.');
             return;
         }
+
         isPinningMode = !isPinningMode;
-        addPinBtn.textContent = isPinningMode ? 'Click on image to place pin...' : '📍 Add Pin';
-    });
-    
-    // Composition Mode Listeners
-    startCompositionBtn.addEventListener('click', enterCompositionMode);
-    cancelCompositionBtn.addEventListener('click', exitCompositionMode);
-    loadToCanvasBtn.addEventListener('click', loadImagesToWorkspace);
-    overlapCheckbox.addEventListener('change', () => {
-        gapSlider.disabled = overlapCheckbox.checked;
-    });
-
-    // --- DRAG AND DROP & PINNING LOGIC ---
-    viewer.addHandler('canvas-press', (event) => {
-        if (isCompositionMode && viewer.world.getItemCount() > 0) {
-            let bestItem = null;
-            const pressPoint = viewer.viewport.pointFromPixel(event.position);
-            for (let i = viewer.world.getItemCount() - 1; i >= 0; i--) {
-                const item = viewer.world.getItemAt(i);
-                const bounds = item.getBounds();
-                if (pressPoint.x > bounds.x && pressPoint.x < bounds.x + bounds.width &&
-                    pressPoint.y > bounds.y && pressPoint.y < bounds.y + bounds.height) {
-                    bestItem = item;
-                    break;
-                }
-            }
-            if (bestItem) {
-                draggedItem = bestItem;
-                viewer.world.raiseToTop(draggedItem);
-                const draggedData = activeCompositionItems.find(d => d.osdItem === draggedItem);
-                if (draggedData) {
-                    activeCompositionItems = activeCompositionItems.filter(d => d.osdItem !== draggedItem);
-                    activeCompositionItems.push(draggedData);
-                    renderCompositionTools();
-                }
-                dragStartPosition = viewer.viewport.pointFromPixel(event.position);
-                const itemPosition = draggedItem.getBounds().getTopLeft();
-                dragStartPosition.offset = pressPoint.minus(itemPosition);
-            }
+        
+        if (isPinningMode) {
+            addPinBtn.textContent = '📍 Click on image to place pin...';
+            addPinBtn.style.backgroundColor = '#ffa500';
+        } else {
+            resetPinningMode();
         }
     });
 
-    viewer.addHandler('canvas-drag', (event) => {
-        if (draggedItem && dragStartPosition) {
-            const newMousePosition = viewer.viewport.pointFromPixel(event.position);
-            draggedItem.setPosition(newMousePosition.minus(dragStartPosition.offset), true);
-        }
-    });
-
-    viewer.addHandler('canvas-release', () => {
-        draggedItem = null;
-        dragStartPosition = null;
-    });
-
+    // Canvas click handler for placing pins
     viewer.addHandler('canvas-click', (event) => {
-        if (isCompositionMode || !isPinningMode) return;
-        const viewportPoint = viewer.viewport.pointFromPixel(event.position);
-        pinCounter++;
-        const newPin = {
-            id: `pin-${Date.now()}`,
-            text: `Annotation #${pinCounter}`,
-            point: { x: viewportPoint.x, y: viewportPoint.y }
-        };
-        savePin(currentImageId, newPin);
-        resetPinningMode();
+        if (!isPinningMode || !currentImageId) {
+            return;
+        }
+
+        try {
+            const viewportPoint = viewer.viewport.pointFromPixel(event.position);
+            pinCounter++;
+            
+            const newPin = {
+                id: `pin-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                text: `Annotation #${pinCounter}`,
+                point: { 
+                    x: viewportPoint.x, 
+                    y: viewportPoint.y 
+                }
+            };
+            
+            savePin(currentImageId, newPin);
+            resetPinningMode();
+
+        } catch (error) {
+            console.error('Failed to create pin:', error);
+            alert('Failed to create annotation. Please try again.');
+        }
     });
-    
+
+    // Handle viewer errors
+    viewer.addHandler('open-failed', (event) => {
+        console.error('Failed to open image:', event);
+        alert('Failed to load the selected image. The file may be corrupted or missing.');
+    });
+
     // --- INITIAL LOAD ---
+    console.log('Initializing application...');
     loadLibrary();
 });
